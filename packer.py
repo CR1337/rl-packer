@@ -88,11 +88,10 @@ class Packer:
     def _set_device_ids(self):
         if self._fuses_filename:
             fuses_device_ids = set()
-            for fuses_filename in self._fuses_filename:
-                with open(fuses_filename, 'r') as f:
-                    fuses_data = json.load(f)
-                    for fuse in fuses_data:
-                        fuses_device_ids.add(fuse['device_id'])
+            with open(self._fuses_filename, 'r') as f:
+                fuses_data = json.load(f)
+                for fuse in fuses_data:
+                    fuses_device_ids.add(fuse['device_id'])
             self._fuses_device_ids = list(fuses_device_ids)
         if self._ildx_filename:
             print("ILDX Device IDs")
@@ -138,31 +137,25 @@ class Packer:
             return
         
         with zipfile.ZipFile(filename, 'w') as zip_file:
-            zip_file.writestr('metadata.json', str(self._metadata, indent=4))
+            zip_file.writestr('metadata.json', json.dumps(self._metadata, indent=4))
 
-            if self._music_filename.endswith('.mp3'):
-                zip_file.write(self._music_filename, 'music.mp3')
-            elif self._music_filename.endswith('.wav'):
-                zip_file.write(self._music_filename, 'music.wav')
+            if self._music_filename:
+                if self._music_filename.endswith('.mp3'):
+                    zip_file.write(self._music_filename, 'music.mp3')
+                elif self._music_filename.endswith('.wav'):
+                    zip_file.write(self._music_filename, 'music.wav')
 
             if self._dmx_filename:
                 zip_file.write(self._dmx_filename, 'dmx.bin')
 
-            fuses_data = []
-            for fuses_filename in self._fuses_filename:
-                with open(fuses_filename, 'r') as f:
+            if self._fuses_filename:
+                fuses_data = []
+                with open(self._fuses_filename, 'r') as f:
                     fuses_data.extend(json.load(f))
-            zip_file.writestr('fuses.json', json.dumps(fuses_data, indent=4))
+                zip_file.writestr('fuses.json', json.dumps(fuses_data, indent=4))
 
-            ildx_data = bytearray()
-            for i, ildx_filename in enumerate(self._ildx_filename):
-                with open(ildx_filename, 'rb') as f:
-                    binary_data = f.read()
-                if i != len(self._ildx_filename) - 1:
-                    ildx_data.extend(binary_data[:-self.ILDX_HEADER_SIZE])
-                else:
-                    ildx_data.extend(binary_data)
-            zip_file.writestr('ilda.ildx', ildx_data)
+            if self._ildx_filename:
+                zip_file.write(self._ildx_filename, 'ilda.ildx')
 
 
     def _ask_yes_no(self, prompt: str) -> bool:
